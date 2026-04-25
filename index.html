@@ -4,182 +4,164 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lean Supply Chain LIVE</title>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<title>Lean Challenge LEGEND</title>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
 
 <style>
-body {
-    margin:0;
-    font-family: 'Segoe UI', sans-serif;
-    background:#020617;
-    color:white;
-}
-
-.container {
-    padding:15px;
-}
-
-.card {
-    background:#0f172a;
-    padding:15px;
-    border-radius:15px;
-    margin-bottom:15px;
-}
-
-button {
-    padding:10px;
-    border:none;
-    border-radius:10px;
-    margin:5px;
-    background:#22c55e;
-}
-
-.kpi {
-    display:flex;
-    justify-content:space-around;
-}
-
-#truck {
-    position:relative;
-    transition:2s;
-}
+body {font-family:'Segoe UI'; background:#020617; color:white; text-align:center;}
+.page{display:none;padding:20px;}
+.active{display:block;}
+button{padding:12px;margin:10px;border:none;border-radius:12px;background:#22c55e;width:80%;}
+.card{background:#0f172a;padding:20px;border-radius:20px;}
+.avatar{font-size:40px;}
 </style>
 
 </head>
 
 <body>
 
-<div class="container">
+<h1>🏆 Lean Challenge LEGEND</h1>
 
-<h2>🌍 Simulation Logistique LIVE</h2>
-
-<div class="card">
-    <select id="flux">
-        <option value="pousse">Flux poussé</option>
-        <option value="tire">Flux tiré</option>
-    </select>
-
-```
-<input type="range" id="stock" min="0" max="100" value="50">
-<span id="stockVal">50</span>
-
-<button onclick="sendData()">🚀 Simuler</button>
-```
-
+<div id="start" class="page active">
+<input id="name" placeholder="Nom"><br>
+<select id="team">
+<option value="A">Team A 🔵</option>
+<option value="B">Team B 🔴</option>
+</select><br>
+<button onclick="startGame()">🚀 Jouer</button>
 </div>
 
-<div class="card kpi">
-    <div>⏱ <span id="t">-</span></div>
-    <div>📦 <span id="s">-</span></div>
-    <div>📈 <span id="p">-</span></div>
+<div id="game" class="page">
+<div class="avatar" id="avatar"></div>
+<h2 id="q"></h2>
+<div id="answers"></div>
+<p id="feedback"></p>
 </div>
 
-<div class="card">
-    <canvas id="chart"></canvas>
-</div>
-
-<div class="card">
-    <div id="truck">🚚</div>
-</div>
-
-<div class="card">
-    🤖 <span id="ai">-</span>
-</div>
-
+<div id="result" class="page">
+<h2 id="score"></h2>
+<h3 id="teamScore"></h3>
+<div id="analysis"></div>
+<ul id="leaderboard"></ul>
 </div>
 
 <script>
-// 🔥 CONFIG FIREBASE (REMPLACE ICI)
+// 🔥 FIREBASE CONFIG
 const firebaseConfig = {
-  apiKey: "XXX",
-  authDomain: "XXX",
-  projectId: "XXX"
+ apiKey:"XXX",
+ authDomain:"XXX",
+ projectId:"XXX"
 };
 
-// INIT
-const app = firebase.initializeApp(firebaseConfig);
+firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-let chart;
+// 🔊 SONS
+const clickSound = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
+const goodSound = new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
+const badSound = new Audio("https://actions.google.com/sounds/v1/cartoon/boing.ogg");
 
-document.getElementById("stock").oninput = e =>
-document.getElementById("stockVal").innerText = e.target.value;
+// QUESTIONS
+const questions=[
+{q:"Production ?",good:1,exp:"Flux tiré = Lean",a:["Masse","Flux tiré"]},
+{q:"Stock ?",good:1,exp:"Stock faible = optimisation",a:["Élevé","Optimisé"]},
+{q:"Transport ?",good:1,exp:"Moins de transport = Lean",a:["Multiple","Optimisé"]},
+{q:"Kanban ?",good:1,exp:"Kanban = flux tiré",a:["Non","Oui"]},
+{q:"VSM ?",good:1,exp:"VSM = vision globale",a:["Non","Oui"]}
+];
 
-// ENVOYER DONNÉES
-function sendData() {
-    let flux = document.getElementById("flux").value;
-    let stock = parseInt(document.getElementById("stock").value);
+let i=0, score=0, errors=[], name="", team="";
 
-    db.collection("simulation").add({
-        flux,
-        stock,
-        time: Date.now()
-    });
+// START
+function startGame(){
+ name=document.getElementById("name").value;
+ team=document.getElementById("team").value;
+
+ document.getElementById("avatar").innerText="🧑‍💼";
+ show("game");
+ next();
 }
 
-// RECEVOIR DONNÉES EN LIVE
-db.collection("simulation")
-.orderBy("time", "desc")
-.limit(1)
-.onSnapshot(snapshot => {
-    snapshot.forEach(doc => {
-        updateUI(doc.data());
-    });
+// NEXT
+function next(){
+ if(i>=questions.length){end();return;}
+
+ let q=questions[i];
+ document.getElementById("q").innerText=q.q;
+
+ let html="";
+ q.a.forEach((ans,index)=>{
+  html+=`<button onclick="answer(${index})">${ans}</button>`;
+ });
+
+ document.getElementById("answers").innerHTML=html;
+}
+
+// ANSWER
+function answer(choice){
+ clickSound.play();
+
+ let q=questions[i];
+
+ if(choice===q.good){
+  score+=10;
+  goodSound.play();
+  document.getElementById("feedback").innerText="✅ "+q.exp;
+ } else {
+  badSound.play();
+  errors.push(q.q);
+  document.getElementById("feedback").innerText="❌ "+q.exp;
+ }
+
+ i++;
+ setTimeout(next,1200);
+}
+
+// END
+function end(){
+ show("result");
+
+ document.getElementById("score").innerText=name+" : "+score;
+
+ // Analyse erreurs
+ let analysis="📊 Analyse :<br>";
+ if(errors.length===0) analysis+="Parfait 🔥";
+ else errors.forEach(e=>analysis+=e+" mal géré<br>");
+
+ document.getElementById("analysis").innerHTML=analysis;
+
+ // Envoi Firebase
+ db.collection("scores").add({name,score,team,time:Date.now()});
+}
+
+// LEADERBOARD + TEAM SCORE
+db.collection("scores")
+.orderBy("score","desc")
+.limit(10)
+.onSnapshot(snap=>{
+ let html="", teamA=0, teamB=0;
+
+ snap.forEach(d=>{
+  let data=d.data();
+  html+=`<li>${data.name} (${data.team}) - ${data.score}</li>`;
+
+  if(data.team==="A") teamA+=data.score;
+  else teamB+=data.score;
+ });
+
+ document.getElementById("leaderboard").innerHTML=html;
+ document.getElementById("teamScore").innerText=
+ "🔵 Team A: "+teamA+" | 🔴 Team B: "+teamB;
 });
 
-function updateUI(data) {
-    let t = data.flux === "pousse" ? data.stock*2 : data.stock;
-    let p = data.flux === "tire" ? 90 : 50;
-
-    document.getElementById("t").innerText = t;
-    document.getElementById("s").innerText = data.stock;
-    document.getElementById("p").innerText = p + "%";
-
-    animateTruck();
-    updateChart(t, data.stock, p);
-    ai(data);
+// NAV
+function show(id){
+ document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+ document.getElementById(id).classList.add("active");
 }
-
-function animateTruck() {
-    let truck = document.getElementById("truck");
-    truck.style.left = "80%";
-    setTimeout(()=>truck.style.left="0",2000);
-}
-
-function ai(data) {
-    let msg = data.flux === "pousse"
-    ? "Passer en flux tiré recommandé"
-    : "Bonne optimisation Lean";
-
-    document.getElementById("ai").innerText = msg;
-}
-
-function updateChart(t,s,p){
-    if(chart) chart.destroy();
-
-    chart = new Chart(document.getElementById("chart"), {
-        type:"bar",
-        data:{
-            labels:["Temps","Stock","Perf"],
-            datasets:[{data:[t,s,p]}]
-        }
-    });
-}
-
-// 🎥 MODE AUTO (démo)
-setInterval(()=>{
-    let flux = Math.random() > 0.5 ? "tire" : "pousse";
-    let stock = Math.floor(Math.random()*100);
-
-    db.collection("simulation").add({
-        flux, stock, time: Date.now()
-    });
-}, 8000);
 </script>
 
 </body>
