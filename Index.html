@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lean Supply Chain LIVE</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+
+<style>
+body {
+    margin:0;
+    font-family: 'Segoe UI', sans-serif;
+    background:#020617;
+    color:white;
+}
+
+.container {
+    padding:15px;
+}
+
+.card {
+    background:#0f172a;
+    padding:15px;
+    border-radius:15px;
+    margin-bottom:15px;
+}
+
+button {
+    padding:10px;
+    border:none;
+    border-radius:10px;
+    margin:5px;
+    background:#22c55e;
+}
+
+.kpi {
+    display:flex;
+    justify-content:space-around;
+}
+
+#truck {
+    position:relative;
+    transition:2s;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>🌍 Simulation Logistique LIVE</h2>
+
+<div class="card">
+    <select id="flux">
+        <option value="pousse">Flux poussé</option>
+        <option value="tire">Flux tiré</option>
+    </select>
+
+```
+<input type="range" id="stock" min="0" max="100" value="50">
+<span id="stockVal">50</span>
+
+<button onclick="sendData()">🚀 Simuler</button>
+```
+
+</div>
+
+<div class="card kpi">
+    <div>⏱ <span id="t">-</span></div>
+    <div>📦 <span id="s">-</span></div>
+    <div>📈 <span id="p">-</span></div>
+</div>
+
+<div class="card">
+    <canvas id="chart"></canvas>
+</div>
+
+<div class="card">
+    <div id="truck">🚚</div>
+</div>
+
+<div class="card">
+    🤖 <span id="ai">-</span>
+</div>
+
+</div>
+
+<script>
+// 🔥 CONFIG FIREBASE (REMPLACE ICI)
+const firebaseConfig = {
+  apiKey: "XXX",
+  authDomain: "XXX",
+  projectId: "XXX"
+};
+
+// INIT
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+let chart;
+
+document.getElementById("stock").oninput = e =>
+document.getElementById("stockVal").innerText = e.target.value;
+
+// ENVOYER DONNÉES
+function sendData() {
+    let flux = document.getElementById("flux").value;
+    let stock = parseInt(document.getElementById("stock").value);
+
+    db.collection("simulation").add({
+        flux,
+        stock,
+        time: Date.now()
+    });
+}
+
+// RECEVOIR DONNÉES EN LIVE
+db.collection("simulation")
+.orderBy("time", "desc")
+.limit(1)
+.onSnapshot(snapshot => {
+    snapshot.forEach(doc => {
+        updateUI(doc.data());
+    });
+});
+
+function updateUI(data) {
+    let t = data.flux === "pousse" ? data.stock*2 : data.stock;
+    let p = data.flux === "tire" ? 90 : 50;
+
+    document.getElementById("t").innerText = t;
+    document.getElementById("s").innerText = data.stock;
+    document.getElementById("p").innerText = p + "%";
+
+    animateTruck();
+    updateChart(t, data.stock, p);
+    ai(data);
+}
+
+function animateTruck() {
+    let truck = document.getElementById("truck");
+    truck.style.left = "80%";
+    setTimeout(()=>truck.style.left="0",2000);
+}
+
+function ai(data) {
+    let msg = data.flux === "pousse"
+    ? "Passer en flux tiré recommandé"
+    : "Bonne optimisation Lean";
+
+    document.getElementById("ai").innerText = msg;
+}
+
+function updateChart(t,s,p){
+    if(chart) chart.destroy();
+
+    chart = new Chart(document.getElementById("chart"), {
+        type:"bar",
+        data:{
+            labels:["Temps","Stock","Perf"],
+            datasets:[{data:[t,s,p]}]
+        }
+    });
+}
+
+// 🎥 MODE AUTO (démo)
+setInterval(()=>{
+    let flux = Math.random() > 0.5 ? "tire" : "pousse";
+    let stock = Math.floor(Math.random()*100);
+
+    db.collection("simulation").add({
+        flux, stock, time: Date.now()
+    });
+}, 8000);
+</script>
+
+</body>
+</html>
