@@ -1,165 +1,115 @@
 <!DOCTYPE html>
-
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lean Challenge LEGEND</title>
+<title>Lean Factory Live</title>
 
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
- 
 <style>
-body {font-family:'Segoe UI'; background:#020617; color:white; text-align:center;}
-.page{display:none;padding:20px;}
-.active{display:block;}
-button{padding:12px;margin:10px;border:none;border-radius:12px;background:#22c55e;width:80%;}
-.card{background:#0f172a;padding:20px;border-radius:20px;}
-.avatar{font-size:40px;}
-</style>
+body {
+    font-family: Arial;
+    background: #0f172a;
+    color: white;
+    text-align: center;
+}
 
+h1 { color: #22c55e; }
+
+.section {
+    margin: 30px;
+    padding: 20px;
+    border-radius: 10px;
+    background: #1e293b;
+}
+
+button {
+    padding: 10px 20px;
+    margin: 10px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.muda {
+    background: crimson;
+}
+
+.good {
+    background: #22c55e;
+}
+
+#factory {
+    margin-top: 20px;
+    padding: 20px;
+    background: #334155;
+    border-radius: 10px;
+}
+
+</style>
 </head>
 
 <body>
 
-<h1>🏆 Lean Challenge LEGEND</h1>
+<h1>🏭 Lean Factory Live</h1>
+<p>Transforme une usine inefficace en système Lean</p>
 
-<div id="start" class="page active">
-<input id="name" placeholder="Nom"><br>
-<select id="team">
-<option value="A">Team A 🔵</option>
-<option value="B">Team B 🔴</option>
-</select><br>
-<button onclick="startGame()">🚀 Jouer</button>
+<!-- ETAPE 1 -->
+<div class="section">
+<h2>🔍 Étape 1 : Chasse aux Mudas</h2>
+
+<button class="muda" onclick="removeMuda(this)">Stock excessif</button>
+<button class="muda" onclick="removeMuda(this)">Transport inutile</button>
+<button class="muda" onclick="removeMuda(this)">Attente</button>
+<button class="muda" onclick="removeMuda(this)">Surproduction</button>
+
+<p>Lead Time réduit : <span id="lead">0</span>%</p>
 </div>
 
-<div id="game" class="page">
-<div class="avatar" id="avatar"></div>
-<h2 id="q"></h2>
-<div id="answers"></div>
-<p id="feedback"></p>
+<!-- ETAPE 2 -->
+<div class="section">
+<h2>⚙️ Étape 2 : Choix du Flux</h2>
+
+<button onclick="pushFlow()">Flux Poussé</button>
+<button onclick="pullFlow()">Flux Tiré (Lean)</button>
+
+<div id="factory">Usine en attente...</div>
 </div>
 
-<div id="result" class="page">
-<h2 id="score"></h2>
-<h3 id="teamScore"></h3>
-<div id="analysis"></div>
-<ul id="leaderboard"></ul>
+<!-- ETAPE 3 -->
+<div class="section">
+<h2>🚀 Étape 3 : Lean 4.0</h2>
+
+<button onclick="digitalize()">Activer Digitalisation</button>
+
+<p>Performance : <span id="perf">0</span>%</p>
 </div>
 
 <script>
-// 🔥 FIREBASE CONFIG
-const firebaseConfig = {
- apiKey:"XXX",
- authDomain:"XXX",
- projectId:"XXX"
-};
+let lead = 0;
+let perf = 0;
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-
-// 🔊 SONS
-const clickSound = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
-const goodSound = new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
-const badSound = new Audio("https://actions.google.com/sounds/v1/cartoon/boing.ogg");
-
-// QUESTIONS
-const questions=[
-{q:"Production ?",good:1,exp:"Flux tiré = Lean",a:["Masse","Flux tiré"]},
-{q:"Stock ?",good:1,exp:"Stock faible = optimisation",a:["Élevé","Optimisé"]},
-{q:"Transport ?",good:1,exp:"Moins de transport = Lean",a:["Multiple","Optimisé"]},
-{q:"Kanban ?",good:1,exp:"Kanban = flux tiré",a:["Non","Oui"]},
-{q:"VSM ?",good:1,exp:"VSM = vision globale",a:["Non","Oui"]}
-];
-
-let i=0, score=0, errors=[], name="", team="";
-
-// START
-function startGame(){
- name=document.getElementById("name").value;
- team=document.getElementById("team").value;
-
- document.getElementById("avatar").innerText="🧑‍💼";
- show("game");
- next();
+function removeMuda(btn) {
+    btn.style.display = "none";
+    lead += 10;
+    document.getElementById("lead").innerText = lead;
 }
 
-// NEXT
-function next(){
- if(i>=questions.length){end();return;}
-
- let q=questions[i];
- document.getElementById("q").innerText=q.q;
-
- let html="";
- q.a.forEach((ans,index)=>{
-  html+=`<button onclick="answer(${index})">${ans}</button>`;
- });
-
- document.getElementById("answers").innerHTML=html;
+function pushFlow() {
+    document.getElementById("factory").innerHTML =
+    "❌ Stock accumulé ❌<br>❌ Désordre ❌<br>Effet Bullwhip !";
 }
 
-// ANSWER
-function answer(choice){
- clickSound.play();
-
- let q=questions[i];
-
- if(choice===q.good){
-  score+=10;
-  goodSound.play();
-  document.getElementById("feedback").innerText="✅ "+q.exp;
- } else {
-  badSound.play();
-  errors.push(q.q);
-  document.getElementById("feedback").innerText="❌ "+q.exp;
- }
-
- i++;
- setTimeout(next,1200);
+function pullFlow() {
+    document.getElementById("factory").innerHTML =
+    "✅ Commande client reçue<br>📦 Kanban activé<br>Flux fluide !";
 }
 
-// END
-function end(){
- show("result");
+function digitalize() {
+    perf += 30;
+    document.getElementById("perf").innerText = perf;
 
- document.getElementById("score").innerText=name+" : "+score;
-
- // Analyse erreurs
- let analysis="📊 Analyse :<br>";
- if(errors.length===0) analysis+="Parfait 🔥";
- else errors.forEach(e=>analysis+=e+" mal géré<br>");
-
- document.getElementById("analysis").innerHTML=analysis;
-
- // Envoi Firebase
- db.collection("scores").add({name,score,team,time:Date.now()});
-}
-
-// LEADERBOARD + TEAM SCORE
-db.collection("scores")
-.orderBy("score","desc")
-.limit(10)
-.onSnapshot(snap=>{
- let html="", teamA=0, teamB=0;
-
- snap.forEach(d=>{
-  let data=d.data();
-  html+=`<li>${data.name} (${data.team}) - ${data.score}</li>`;
-
-  if(data.team==="A") teamA+=data.score;
-  else teamB+=data.score;
- });
-
- document.getElementById("leaderboard").innerHTML=html;
- document.getElementById("teamScore").innerText=
- "🔵 Team A: "+teamA+" | 🔴 Team B: "+teamB;
-});
-
-// NAV
-function show(id){
- document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
- document.getElementById(id).classList.add("active");
+    document.getElementById("factory").innerHTML +=
+    "<br>📡 e-Kanban actif<br>📊 VSM digitale<br>🌱 Green Lean activé";
 }
 </script>
 
