@@ -3,113 +3,107 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lean Factory Live</title>
+<title>Lean Flow Experience</title>
 
 <style>
 body {
-    font-family: Arial;
-    background: #0f172a;
-    color: white;
-    text-align: center;
+    margin:0;
+    background:#0f172a;
+    color:white;
+    font-family:Arial;
+    text-align:center;
 }
 
-h1 { color: #22c55e; }
+h1 { margin:20px; }
 
-.section {
-    margin: 30px;
-    padding: 20px;
-    border-radius: 10px;
-    background: #1e293b;
+#line {
+    position:relative;
+    height:200px;
+    margin:40px;
+    border-top:4px solid #22c55e;
+}
+
+.stage {
+    position:absolute;
+    top:-40px;
+    width:25%;
+    text-align:center;
+}
+
+#p1 { left:0%; }
+#p2 { left:25%; }
+#p3 { left:50%; }
+#p4 { left:75%; }
+
+.box {
+    position:absolute;
+    top:80px;
+    font-size:28px;
+    transition: all linear;
 }
 
 button {
-    padding: 10px 20px;
-    margin: 10px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
+    padding:10px 20px;
+    margin:10px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
 }
-
-.muda {
-    background: crimson;
-}
-
-.good {
-    background: #22c55e;
-}
-
-#factory {
-    margin-top: 20px;
-    padding: 20px;
-    background: #334155;
-    border-radius: 10px;
-}
-
 </style>
 </head>
 
 <body>
 
-<h1>🏭 Lean Factory Live</h1>
-<p>Transforme une usine inefficace en système Lean</p>
+<h1>🚀 Lean Flow Experience</h1>
 
-<!-- ETAPE 1 -->
-<div class="section">
-<h2>🔍 Étape 1 : Chasse aux Mudas</h2>
-
-<button class="muda" onclick="removeMuda(this)">Stock excessif</button>
-<button class="muda" onclick="removeMuda(this)">Transport inutile</button>
-<button class="muda" onclick="removeMuda(this)">Attente</button>
-<button class="muda" onclick="removeMuda(this)">Surproduction</button>
-
-<p>Lead Time réduit : <span id="lead">0</span>%</p>
+<div id="line">
+    <div id="p1" class="stage">🏭 Production</div>
+    <div id="p2" class="stage">⚙️ Process</div>
+    <div id="p3" class="stage">🚚 Livraison</div>
+    <div id="p4" class="stage">🏠 Client</div>
 </div>
 
-<!-- ETAPE 2 -->
-<div class="section">
-<h2>⚙️ Étape 2 : Choix du Flux</h2>
-
-<button onclick="pushFlow()">Flux Poussé</button>
-<button onclick="pullFlow()">Flux Tiré (Lean)</button>
-
-<div id="factory">Usine en attente...</div>
-</div>
-
-<!-- ETAPE 3 -->
-<div class="section">
-<h2>🚀 Étape 3 : Lean 4.0</h2>
-
-<button onclick="digitalize()">Activer Digitalisation</button>
-
-<p>Performance : <span id="perf">0</span>%</p>
-</div>
+<button onclick="startPush()">❌ Flux poussé</button>
+<button onclick="startLean()">✅ Flux Lean</button>
 
 <script>
-let lead = 0;
-let perf = 0;
+let interval;
 
-function removeMuda(btn) {
-    btn.style.display = "none";
-    lead += 10;
-    document.getElementById("lead").innerText = lead;
+function createBox(speed) {
+    let box = document.createElement("div");
+    box.className = "box";
+    box.innerText = "📦";
+
+    document.getElementById("line").appendChild(box);
+
+    let pos = 0;
+
+    let move = setInterval(() => {
+        pos += speed;
+        box.style.left = pos + "%";
+
+        // blocage en mode chaos
+        if(pos > 40 && Math.random() < 0.3){
+            speed = 0;
+        }
+
+        if(pos >= 90){
+            clearInterval(move);
+            box.remove();
+        }
+    }, 50);
 }
 
-function pushFlow() {
-    document.getElementById("factory").innerHTML =
-    "❌ Stock accumulé ❌<br>❌ Désordre ❌<br>Effet Bullwhip !";
+// MODE CHAOS
+function startPush(){
+    clearInterval(interval);
+    interval = setInterval(() => createBox(0.5), 300);
 }
 
-function pullFlow() {
-    document.getElementById("factory").innerHTML =
-    "✅ Commande client reçue<br>📦 Kanban activé<br>Flux fluide !";
-}
-
-function digitalize() {
-    perf += 30;
-    document.getElementById("perf").innerText = perf;
-
-    document.getElementById("factory").innerHTML +=
-    "<br>📡 e-Kanban actif<br>📊 VSM digitale<br>🌱 Green Lean activé";
+// MODE LEAN
+function startLean(){
+    clearInterval(interval);
+    interval = setInterval(() => createBox(1.5), 1200);
 }
 </script>
 
