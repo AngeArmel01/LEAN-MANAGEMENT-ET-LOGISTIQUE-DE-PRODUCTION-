@@ -3,107 +3,128 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lean Flow Experience</title>
+<title>Lean World Explorer</title>
 
 <style>
 body {
     margin:0;
+    overflow:hidden;
     background:#0f172a;
     color:white;
-    font-family:Arial;
-    text-align:center;
+    font-family:sans-serif;
 }
 
-h1 { margin:20px; }
-
-#line {
+/* Carte */
+#map {
     position:relative;
-    height:200px;
-    margin:40px;
-    border-top:4px solid #22c55e;
+    width:2000px;
+    height:1000px;
+    background:#1e293b;
 }
 
-.stage {
+/* Joueur */
+#player {
     position:absolute;
-    top:-40px;
-    width:25%;
+    width:40px;
+    height:40px;
+    font-size:30px;
+}
+
+/* Zones */
+.zone {
+    position:absolute;
     text-align:center;
 }
 
-#p1 { left:0%; }
-#p2 { left:25%; }
-#p3 { left:50%; }
-#p4 { left:75%; }
-
-.box {
-    position:absolute;
-    top:80px;
-    font-size:28px;
-    transition: all linear;
+.icon {
+    font-size:40px;
 }
 
-button {
-    padding:10px 20px;
-    margin:10px;
-    border:none;
-    border-radius:8px;
-    cursor:pointer;
+/* Info */
+#info {
+    position:fixed;
+    bottom:0;
+    width:100%;
+    background:black;
+    padding:10px;
 }
 </style>
 </head>
 
 <body>
 
-<h1>🚀 Lean Flow Experience</h1>
+<div id="map">
 
-<div id="line">
-    <div id="p1" class="stage">🏭 Production</div>
-    <div id="p2" class="stage">⚙️ Process</div>
-    <div id="p3" class="stage">🚚 Livraison</div>
-    <div id="p4" class="stage">🏠 Client</div>
+<div id="player">🚗</div>
+
+<div class="zone" style="left:200px; top:200px;">
+    <div class="icon">🏭</div>
+    Production
 </div>
 
-<button onclick="startPush()">❌ Flux poussé</button>
-<button onclick="startLean()">✅ Flux Lean</button>
+<div class="zone" style="left:600px; top:300px;">
+    <div class="icon">📦</div>
+    Mudas
+</div>
+
+<div class="zone" style="left:1000px; top:400px;">
+    <div class="icon">⚙️</div>
+    Process Lean
+</div>
+
+<div class="zone" style="left:1400px; top:300px;">
+    <div class="icon">🚚</div>
+    Livraison
+</div>
+
+<div class="zone" style="left:1700px; top:200px;">
+    <div class="icon">🏠</div>
+    Client
+</div>
+
+</div>
+
+<div id="info">Utilise les flèches pour explorer</div>
 
 <script>
-let interval;
+let player = document.getElementById("player");
+let x = 100;
+let y = 100;
 
-function createBox(speed) {
-    let box = document.createElement("div");
-    box.className = "box";
-    box.innerText = "📦";
-
-    document.getElementById("line").appendChild(box);
-
-    let pos = 0;
-
-    let move = setInterval(() => {
-        pos += speed;
-        box.style.left = pos + "%";
-
-        // blocage en mode chaos
-        if(pos > 40 && Math.random() < 0.3){
-            speed = 0;
-        }
-
-        if(pos >= 90){
-            clearInterval(move);
-            box.remove();
-        }
-    }, 50);
+function update(){
+    player.style.left = x + "px";
+    player.style.top = y + "px";
 }
 
-// MODE CHAOS
-function startPush(){
-    clearInterval(interval);
-    interval = setInterval(() => createBox(0.5), 300);
-}
+document.addEventListener("keydown", (e)=>{
+    if(e.key === "ArrowRight") x += 20;
+    if(e.key === "ArrowLeft") x -= 20;
+    if(e.key === "ArrowUp") y -= 20;
+    if(e.key === "ArrowDown") y += 20;
 
-// MODE LEAN
-function startLean(){
-    clearInterval(interval);
-    interval = setInterval(() => createBox(1.5), 1200);
+    checkZones();
+    update();
+});
+
+function checkZones(){
+
+    let info = document.getElementById("info");
+
+    if(x > 150 && x < 300){
+        info.innerText = "🏭 Production : création du produit";
+    }
+    else if(x > 550 && x < 700){
+        info.innerText = "📦 Mudas : gaspillage (stocks, attentes...)";
+    }
+    else if(x > 950 && x < 1100){
+        info.innerText = "⚙️ Lean : flux optimisé (Kanban, JAT)";
+    }
+    else if(x > 1350 && x < 1500){
+        info.innerText = "🚚 Livraison : transport";
+    }
+    else if(x > 1650){
+        info.innerText = "🏠 Client final : valeur livrée";
+    }
 }
 </script>
 
