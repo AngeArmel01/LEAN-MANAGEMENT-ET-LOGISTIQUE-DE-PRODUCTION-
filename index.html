@@ -85,10 +85,10 @@
   /* ── D-PAD ── */
   #dpad {
     position:fixed; bottom:18px; left:18px; z-index:40;
-    width:144px; height:144px;
+    width:144px; height:196px;
     display:grid;
     grid-template-columns: repeat(3,48px);
-    grid-template-rows: repeat(3,48px);
+    grid-template-rows: repeat(3,48px) 44px;
     gap:0; user-select:none; -webkit-user-select:none;
   }
   .dp-btn {
@@ -109,6 +109,12 @@
   #dpCenter{ grid-column:2; grid-row:2; background:rgba(0,0,0,.3); border-color:rgba(255,255,255,.08); border-radius:6px; font-size:14px; pointer-events:none; }
   #dpRight { grid-column:3; grid-row:2; border-radius:4px 10px 10px 4px; }
   #dpDown  { grid-column:2; grid-row:3; border-radius:4px 4px 10px 10px; }
+  #dpHorn  {
+    grid-column:1 / span 3; grid-row:4; border-radius:10px; margin-top:4px;
+    background:rgba(220,80,0,.35); border-color:rgba(255,140,0,.55);
+    font-size:16px; letter-spacing:4px; gap:6px;
+  }
+  #dpHorn.pressed { background:rgba(255,140,0,.55); }
 
   /* ── TOAST ── */
   #toast {
@@ -150,7 +156,7 @@
     color:var(--c,#FFD700); line-height:1.7; margin-bottom:8px;
   }
   .p-sub {
-    font-family:'Baloo 2',sans-serif; font-size:14px; font-style:italic;
+    font-family:'Baloo 2',sans-serif; font-size:14px;
     color:rgba(255,255,255,.6); margin-bottom:20px; line-height:1.6;
   }
   .p-items { display:flex; flex-direction:column; gap:8px; }
@@ -227,6 +233,7 @@
   <div id="dpCenter" class="dp-btn">🏎️</div>
   <div id="dpRight"  class="dp-btn">▶</div>
   <div id="dpDown"   class="dp-btn">▼</div>
+  <div id="dpHorn"   class="dp-btn">📯 KLAXON</div>
 </div>
 
 <!-- Toast -->
@@ -250,8 +257,109 @@
 
 <script>
 // ═══════════════════════════════════════════════
-//  LEAN CONTENT — 10 stations from the PDF
+//  WEB AUDIO ENGINE
 // ═══════════════════════════════════════════════
+let AC = null, engineOsc = null, engineGain = null, engineFilter = null;
+
+function initAudio() {
+  if (AC) return;
+  AC = new (window.AudioContext || window.webkitAudioContext)();
+
+  // Low-pass filtered sawtooth for engine rumble
+  engineFilter = AC.createBiquadFilter();
+  engineFilter.type = 'lowpass';
+  engineFilter.frequency.value = 280;
+  engineFilter.Q.value = 1.4;
+
+  engineOsc = AC.createOscillator();
+  engineOsc.type = 'sawtooth';
+  engineOsc.frequency.value = 58;
+
+  engineGain = AC.createGain();
+  engineGain.gain.value = 0;
+
+  // Second osc for richness
+  const engineOsc2 = AC.createOscillator();
+  engineOsc2.type = 'square';
+  engineOsc2.frequency.value = 116;
+  const engineGain2 = AC.createGain();
+  engineGain2.gain.value = 0;
+
+  engineOsc.connect(engineFilter);
+  engineOsc2.connect(engineFilter);
+  engineFilter.connect(engineGain);
+  engineGain.connect(AC.destination);
+
+  // Store osc2 refs on gain for update
+  engineGain._osc2 = engineOsc2;
+  engineGain._gain2 = engineGain2;
+
+  engineOsc.start();
+  engineOsc2.start();
+}
+
+function updateEngineSound(speed) {
+  if (!AC || !engineOsc) return;
+  const abs = Math.abs(speed);
+  const freq  = 58 + abs * 38;
+  const vol   = abs > 0.15 ? Math.min(0.18, 0.06 + abs * 0.025) : 0;
+  const fCut  = 180 + abs * 180;
+  const t = AC.currentTime;
+  engineOsc.frequency.setTargetAtTime(freq,      t, 0.07);
+  engineGain.gain.setTargetAtTime(vol,            t, 0.06);
+  engineFilter.frequency.setTargetAtTime(fCut,   t, 0.08);
+  engineGain._osc2.frequency.setTargetAtTime(freq * 2, t, 0.07);
+}
+
+function playHorn() {
+  if (!AC) return;
+  const t = AC.currentTime;
+  // Classic two-tone horn: A4 then E5
+  [[440, 0], [659, 0.13]].forEach(([freq, delay]) => {
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = 'square';
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0, t + delay);
+    g.gain.linearRampToValueAtTime(0.22, t + delay + 0.01);
+    g.gain.setValueAtTime(0.22, t + delay + 0.12);
+    g.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.26);
+    o.connect(g); g.connect(AC.destination);
+    o.start(t + delay); o.stop(t + delay + 0.28);
+  });
+}
+
+function playCheckpoint(color) {
+  if (!AC) return;
+  const t = AC.currentTime;
+  // Bright ascending arpeggio — C5 E5 G5 C6
+  [523, 659, 784, 1047].forEach((freq, i) => {
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = 'triangle';
+    o.frequency.value = freq;
+    const s = t + i * 0.09;
+    g.gain.setValueAtTime(0, s);
+    g.gain.linearRampToValueAtTime(0.18, s + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, s + 0.22);
+    o.connect(g); g.connect(AC.destination);
+    o.start(s); o.stop(s + 0.25);
+  });
+}
+
+function playVictory() {
+  if (!AC) return;
+  const t = AC.currentTime;
+  // Mario-ish short fanfare
+  [523, 523, 523, 415, 523, 659, 784].forEach((freq, i) => {
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = 'square';
+    o.frequency.value = freq;
+    const s = t + i * 0.14;
+    g.gain.setValueAtTime(0.18, s);
+    g.gain.exponentialRampToValueAtTime(0.001, s + 0.18);
+    o.connect(g); g.connect(AC.destination);
+    o.start(s); o.stop(s + 0.2);
+  });
+}
 const STATIONS = [
   {
     id:0, emoji:'🏁', name:'INTRODUCTION', color:'#4ECDC4',
@@ -759,15 +867,19 @@ function updateCamera(){
 // ═══════════════════════════════════════════════
 //  POPUP
 // ═══════════════════════════════════════════════
+// Strip " — " (em-dash AI style) from displayed text
+function cleanText(s){ return s.replace(/\s—\s/g,' '); }
+
 function openPopup(s){
   running=false;
+  playCheckpoint(s.color);
   const popup=document.getElementById('popup');
   popup.style.setProperty('--c',s.color);
   document.getElementById('popupInner').innerHTML=`
     <div class="p-num">STATION ${s.id+1} / 10</div>
     <div class="p-title">${s.emoji} ${s.name}</div>
-    <div class="p-sub">${s.subtitle}</div>
-    <div class="p-items">${s.points.map(p=>`<div class="p-item">${p}</div>`).join('')}</div>
+    <div class="p-sub">${cleanText(s.subtitle)}</div>
+    <div class="p-items">${s.points.map(p=>`<div class="p-item">${cleanText(p)}</div>`).join('')}</div>
     <div class="p-progress">${visited} / 10 STATIONS VISITÉES</div>
   `;
   document.getElementById('overlay').classList.add('on');
@@ -777,7 +889,7 @@ function openPopup(s){
 function closePopup(){
   document.getElementById('overlay').classList.remove('on');
   running=true;
-  if(visited===10) setTimeout(()=>document.getElementById('victory').classList.add('on'),600);
+  if(visited===10) setTimeout(()=>{ document.getElementById('victory').classList.add('on'); playVictory(); },600);
 }
 
 // ═══════════════════════════════════════════════
@@ -801,6 +913,7 @@ function loop(){
   ctx.restore();
   const kmh=Math.round(Math.abs(kart.speed)*24);
   document.getElementById('hudSpeed').textContent=`⚡ ${kmh} km/h`;
+  updateEngineSound(kart.speed);
   drawMinimap();
   requestAnimationFrame(loop);
 }
@@ -811,6 +924,7 @@ function loop(){
 function startGame(){
   document.getElementById('welcome').style.display='none';
   resize(); buildSpline(); buildTrees(); buildCones();
+  initAudio();
   running=true;
   loop();
   setTimeout(()=>toast('🏎️  BONNE ROUTE ! VISITE LES 10 STATIONS !'),200);
@@ -821,7 +935,7 @@ function startGame(){
 // ═══════════════════════════════════════════════
 window.addEventListener('keydown',e=>{
   keys[e.key]=true;
-  if(e.key===' ') toast('📯 BEEP BEEP !');
+  if(e.key===' '){ playHorn(); toast('📯 BEEP BEEP !'); }
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
 });
 window.addEventListener('keyup',e=>{ keys[e.key]=false; });
@@ -836,31 +950,33 @@ const dpMap = {
 
 Object.entries(dpMap).forEach(([id, key]) => {
   const btn = document.getElementById(id);
-
-  function press(e) {
-    e.preventDefault();
-    keys[key] = true;
-    btn.classList.add('pressed');
-  }
-  function release(e) {
-    e.preventDefault();
-    keys[key] = false;
-    btn.classList.remove('pressed');
-  }
-
-  btn.addEventListener('touchstart',  press,   { passive: false });
-  btn.addEventListener('touchend',    release, { passive: false });
-  btn.addEventListener('touchcancel', release, { passive: false });
-  // Also support mouse for desktop testing
-  btn.addEventListener('mousedown',  press);
-  btn.addEventListener('mouseup',    release);
-  btn.addEventListener('mouseleave', release);
+  function press(e)   { e.preventDefault(); keys[key]=true;  btn.classList.add('pressed'); }
+  function release(e) { e.preventDefault(); keys[key]=false; btn.classList.remove('pressed'); }
+  btn.addEventListener('touchstart',  press,   { passive:false });
+  btn.addEventListener('touchend',    release, { passive:false });
+  btn.addEventListener('touchcancel', release, { passive:false });
+  btn.addEventListener('mousedown',   press);
+  btn.addEventListener('mouseup',     release);
+  btn.addEventListener('mouseleave',  release);
 });
 
-// Prevent multi-touch scroll on the whole dpad area
-document.getElementById('dpad').addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+// Horn button
+(function(){
+  const btn = document.getElementById('dpHorn');
+  function honk(e){ e.preventDefault(); btn.classList.add('pressed'); playHorn(); toast('📯 BEEP BEEP !'); }
+  function unhonk(e){ e.preventDefault(); btn.classList.remove('pressed'); }
+  btn.addEventListener('touchstart',  honk,   { passive:false });
+  btn.addEventListener('touchend',    unhonk, { passive:false });
+  btn.addEventListener('touchcancel', unhonk, { passive:false });
+  btn.addEventListener('mousedown',   honk);
+  btn.addEventListener('mouseup',     unhonk);
+  btn.addEventListener('mouseleave',  unhonk);
+})();
+
+// Prevent scroll on dpad
+document.getElementById('dpad').addEventListener('touchmove', e=>e.preventDefault(), { passive:false });
 
 resize();
 </script>
 </body>
-</html>
+ </html>
